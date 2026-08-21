@@ -18,7 +18,9 @@ These barriers don't just slow teams down, they fundamentally limit what's possi
 
 Solving the multi-domain correlation problem requires more than a chatbot that answers questions from static documentation. It requires an autonomous system that queries live data sources like route tables, flow logs, AWS Identity and Access Management (IAM) policies, correlates signals across services, and takes structured actions without waiting for a human to initiate each step. Unlike a chatbot, an AI agent acts on your actual environment in real time. Building this capability requires four layers: an agent that orchestrates investigations, a set of domain-specific tools the agent can invoke, a registry that governs which tools are available, and a runtime that handles execution across multiple accounts and Regions. Figure 1 shows these layers.
 
-*Figure 1: Layers of AI Network Operations*
+![Figure 1: Layers of AI Network Operations](GenAIBestPracticeBlog_architecture.png)
+
+                               *Figure 1: Layers of AI Network Operations*
 
 ### Agents
 
