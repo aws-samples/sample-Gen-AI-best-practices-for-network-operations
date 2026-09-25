@@ -1,5 +1,15 @@
 # AI Best Practices for AWS Network Operations with AI Agents and MCP
 
+<div align="center">
+
+[![GitHub clones](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/aws-samples/sample-Gen-AI-best-practices-for-network-operations/main/traffic-data/clones-total-badge.json)](https://github.com/aws-samples/sample-Gen-AI-best-practices-for-network-operations)
+[![GitHub views](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/aws-samples/sample-Gen-AI-best-practices-for-network-operations/main/traffic-data/views-total-badge.json)](https://github.com/aws-samples/sample-Gen-AI-best-practices-for-network-operations)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT-0](https://img.shields.io/badge/License-MIT--0-blue.svg)](LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/aws-samples/sample-Gen-AI-best-practices-for-network-operations)](https://github.com/aws-samples/sample-Gen-AI-best-practices-for-network-operations/stargazers)
+
+</div>
+
 This blog post is for platform and SRE teams running 24/7 network operations and want to use AI Agents and Model Context Protocol (MCP) for intelligent, automated event response, and for individual engineers or small teams who want agentic diagnostics during development and on-call triage. If you are in the first group, focus on AWS DevOps Agent (Preview) (DevOps Agent), Amazon Bedrock AgentCore (AgentCore), and the AWS Agent Registry (Preview) Agent Registry. If you are in the second, the IDE Agents section and MCP server configuration are your starting point. Both groups share the same MCP server foundation.
 
 > **Note:** At the time of writing, AWS DevOps Agent and the AWS Agent Registry are in Preview. Features and capabilities described in this post may change before general availability. Recommendations involving these services reflect the direction of the service; validate current capabilities against the latest documentation.

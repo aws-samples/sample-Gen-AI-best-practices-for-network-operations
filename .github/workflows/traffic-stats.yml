@@ -1,0 +1,112 @@
+name: Collect Traffic Stats
+on:
+  schedule:
+    # Every Monday and Thursday at 16:30 UTC (11:30 AM ET / 9:00 AM PT)
+    - cron: "30 16 * * 1,4"
+  workflow_dispatch: # Allow manual trigger
+permissions:
+  contents: write
+jobs:
+  collect-stats:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.TRAFFIC_TOKEN }}
+      - name: Collect traffic data
+        env:
+          # Traffic API requires push/admin access, which the default
+          # GITHUB_TOKEN lacks. Use a PAT with "Administration: read" (fine-grained)
+          # or "repo" scope (classic), stored as the TRAFFIC_TOKEN secret.
+          GH_TOKEN: ${{ secrets.TRAFFIC_TOKEN }}
+        run: |
+          set -euo pipefail
+          REPO="aws-samples/sample-Gen-AI-best-practices-for-network-operations"
+          OUTPUT_DIR="traffic-data"
+          mkdir -p "$OUTPUT_DIR"
+          echo "=== Collecting traffic stats for $REPO ==="
+          # Fetch current 14-day window
+          gh api "/repos/$REPO/traffic/clones?per=day" > "$OUTPUT_DIR/clones_latest.json"
+          gh api "/repos/$REPO/traffic/views?per=day" > "$OUTPUT_DIR/views_latest.json"
+          gh api "/repos/$REPO/traffic/popular/referrers" > "$OUTPUT_DIR/referrers_latest.json"
+          gh api "/repos/$REPO/traffic/popular/paths" > "$OUTPUT_DIR/paths_latest.json"
+          # Initialize CSVs if missing
+          if [ ! -f "$OUTPUT_DIR/clones_history.csv" ]; then
+            echo "date,count,uniques" > "$OUTPUT_DIR/clones_history.csv"
+          fi
+          if [ ! -f "$OUTPUT_DIR/views_history.csv" ]; then
+            echo "date,count,uniques" > "$OUTPUT_DIR/views_history.csv"
+          fi
+          # Append new clone data (skip duplicates)
+          jq -r '.clones[] | "\(.timestamp | split("T")[0]),\(.count),\(.uniques)"' \
+            "$OUTPUT_DIR/clones_latest.json" | while read line; do
+            DATE_ENTRY=$(echo "$line" | cut -d',' -f1)
+            if ! grep -q "^$DATE_ENTRY" "$OUTPUT_DIR/clones_history.csv"; then
+              echo "$line" >> "$OUTPUT_DIR/clones_history.csv"
+            fi
+          done
+          # Append new views data (skip duplicates)
+          jq -r '.views[] | "\(.timestamp | split("T")[0]),\(.count),\(.uniques)"' \
+            "$OUTPUT_DIR/views_latest.json" | while read line; do
+            DATE_ENTRY=$(echo "$line" | cut -d',' -f1)
+            if ! grep -q "^$DATE_ENTRY" "$OUTPUT_DIR/views_history.csv"; then
+              echo "$line" >> "$OUTPUT_DIR/views_history.csv"
+            fi
+          done
+          # Print summary
+          TOTAL_CLONES=$(jq '.count' "$OUTPUT_DIR/clones_latest.json")
+          UNIQUE_CLONES=$(jq '.uniques' "$OUTPUT_DIR/clones_latest.json")
+          TOTAL_VIEWS=$(jq '.count' "$OUTPUT_DIR/views_latest.json")
+          UNIQUE_VIEWS=$(jq '.uniques' "$OUTPUT_DIR/views_latest.json")
+          echo ""
+          echo "=== Traffic Summary (last 14 days) ==="
+          echo "Clones: $TOTAL_CLONES total, $UNIQUE_CLONES unique"
+          echo "Views:  $TOTAL_VIEWS total, $UNIQUE_VIEWS unique"
+          # Generate shields.io endpoint badge JSON files (last 14 days)
+          cat > "$OUTPUT_DIR/clones-badge.json" << EOF
+          {
+            "schemaVersion": 1,
+            "label": "clones (14d)",
+            "message": "${TOTAL_CLONES} total | ${UNIQUE_CLONES} unique",
+            "color": "blue"
+          }
+          EOF
+          cat > "$OUTPUT_DIR/views-badge.json" << EOF
+          {
+            "schemaVersion": 1,
+            "label": "views (14d)",
+            "message": "${TOTAL_VIEWS} total | ${UNIQUE_VIEWS} unique",
+            "color": "green"
+          }
+          EOF
+          # Compute all-time totals from history CSVs
+          ALL_TIME_CLONES=$(tail -n +2 "$OUTPUT_DIR/clones_history.csv" | awk -F',' '{s+=$2} END {print s+0}')
+          ALL_TIME_VIEWS=$(tail -n +2 "$OUTPUT_DIR/views_history.csv" | awk -F',' '{s+=$2} END {print s+0}')
+          cat > "$OUTPUT_DIR/clones-total-badge.json" << EOF
+          {
+            "schemaVersion": 1,
+            "label": "total clones",
+            "message": "${ALL_TIME_CLONES}",
+            "color": "blue"
+          }
+          EOF
+          cat > "$OUTPUT_DIR/views-total-badge.json" << EOF
+          {
+            "schemaVersion": 1,
+            "label": "total views",
+            "message": "${ALL_TIME_VIEWS}",
+            "color": "green"
+          }
+          EOF
+          echo "All-time: $ALL_TIME_CLONES clones, $ALL_TIME_VIEWS views"
+      - name: Commit and push stats
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add traffic-data/
+          if git diff --cached --quiet; then
+            echo "No new traffic data to commit"
+          else
+            git commit -m "chore: update traffic stats [skip ci]"
+            git push
+          fi
